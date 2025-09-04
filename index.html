@@ -18,9 +18,17 @@
       --control:#ffffff;
     }
     *{ box-sizing:border-box; }
-    body{ margin:0; padding:20px; background:var(--bg); color:var(--fg);
-      font:14px/1.4 ui-sans-serif, system-ui,-apple-system, Segoe UI, Roboto, Arial; }
-    .container{ max-width:1200px; margin:0 auto; }
+    body{
+      margin:0;
+      min-height:100dvh; /* full viewport height incl. mobile UI */
+      display:flex;
+      align-items:center; /* vertical center */
+      justify-content:center; /* horizontal center */
+      padding:40px 20px; /* breathing room around */
+      background:var(--bg); color:var(--fg);
+      font:14px/1.4 ui-sans-serif, system-ui,-apple-system, Segoe UI, Roboto, Arial;
+    }
+    .container{ max-width:1500px; margin:0 auto; }
     .bar{ display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:14px; }
     .brand{ display:flex; align-items:center; gap:10px; }
     .brand img{ height:35px; width:auto; display:block; }
@@ -31,7 +39,7 @@
     .btn{ padding:10px 14px; border-radius:12px; border:1px solid var(--stroke); background:var(--panel2); color:var(--fg); cursor:pointer; }
     .btn.primary{ background:var(--ok); border-color:#1d4c38; }
     .btn.danger{ background:var(--danger); border-color:#5a2222; }
-    .grid{ display:grid; grid-template-columns: 460px 1fr; gap:16px; }
+    .grid{ display:grid; grid-template-columns: 580px 1fr; gap:16px; }
     .card{ background:var(--panel); border:1px solid var(--stroke); border-radius:var(--radius); padding:16px; box-shadow:var(--shadow); }
     .section{ margin-bottom:14px; }
     .title{ margin:0 0 8px; font-size:13px; color:var(--muted); text-transform:uppercase; letter-spacing:.12em; }
@@ -76,6 +84,10 @@
     @media (max-width: 980px){
       .grid{ grid-template-columns: 1fr; }
       iframe#preview{ height:360px; }
+    }
+
+    @media (max-height: 740px){
+      body{ align-items:flex-start; } /* on short screens, avoid cutting header */
     }
   </style>
   <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
@@ -226,6 +238,40 @@
                 </select>
               </div>
             </div>
+            <div class="hr"></div>
+            <div class="section">
+              <h2 class="title">Avanzate</h2>
+              <div class="row3">
+                <div>
+                  <label>Colore testo (corpo)</label>
+                  <input id="m-colorText" type="color" value="#333333">
+                </div>
+                <div>
+                  <label>Colore terziario (azienda)</label>
+                  <input id="m-color3" type="color" value="#666666">
+                </div>
+                <div>
+                  <label>Font</label>
+                  <select id="m-font">
+                    <option value="">Predefinito (Arial/Helvetica)</option>
+                    <option value="Arial, Helvetica, sans-serif">Arial / Helvetica</option>
+                    <option value="Segoe UI, Roboto, Arial, sans-serif">Segoe UI / Roboto</option>
+                    <option value="Tahoma, Arial, sans-serif">Tahoma</option>
+                    <option value="Verdana, Arial, sans-serif">Verdana</option>
+                  </select>
+                </div>
+              </div>
+              <div class="row3" style="margin-top:8px;">
+                <div>
+                  <label>Larghezza logo di default (px)</label>
+                  <input id="m-logoW" type="number" min="40" max="220" placeholder="85">
+                </div>
+                <div>
+                  <label>Spazio tra logo e testo (px)</label>
+                  <input id="m-gap" type="number" min="6" max="36" placeholder="14">
+                </div>
+              </div>
+            </div>
             <div class="actions" style="margin-top:10px;">
               <button id="m-new" class="btn" type="button">+ Nuovo</button>
               <button id="m-save" class="btn primary" type="button">Salva</button>
@@ -350,7 +396,7 @@
     async function loadKitsSafe() {
       try {
         if (!sb) throw new Error('offline/nessuna chiave: mostro solo lista vuota');
-        const { data, error } = await sb.from('brand_kits').select('id,name,logo_url,color_primary,color_secondary,shared,owner_user_id').order('name', { ascending:true });
+        const { data, error } = await sb.from('brand_kits').select('id,name,logo_url,color_primary,color_secondary,shared,owner_user_id,options').order('name', { ascending:true });
         if (error) throw error;
         kits = (data || []).filter(k => k.shared || (sessionUser && k.owner_user_id === sessionUser.id));
       } catch (e) {
@@ -404,6 +450,13 @@
       $('#m-color1').value = kit.color_primary || '#1F4A34';
       $('#m-color2').value = kit.color_secondary || '#B39B79';
       $('#m-shared').value = kit.shared ? 'true' : 'false';
+      // Avanzate
+      const opts = kit.options || {};
+      $('#m-colorText').value = opts.color_text || '#333333';
+      $('#m-color3').value = opts.color_tertiary || '#666666';
+      $('#m-font').value = opts.font_family || '';
+      $('#m-logoW').value = opts.logo_width ?? '';
+      $('#m-gap').value = opts.logo_gap ?? '';
       $('#m-msg').textContent = 'Modifica: ' + (kit.name || '');
     
       $('#m-save').onclick = async () => await saveNewFromManager();
@@ -419,7 +472,14 @@
         color_primary: $('#m-color1').value,
         color_secondary: $('#m-color2').value,
         shared: $('#m-shared').value === 'true',
-        owner_user_id: sessionUser.id
+        owner_user_id: sessionUser.id,
+        options: {
+          color_text: $('#m-colorText').value,
+          color_tertiary: $('#m-color3').value,
+          font_family: $('#m-font').value || null,
+          logo_width: $('#m-logoW').value ? parseInt($('#m-logoW').value,10) : null,
+          logo_gap: $('#m-gap').value ? parseInt($('#m-gap').value,10) : null
+        }
       };
       if (!payload.name) return alert('Nome obbligatorio');
       const { data, error } = await sb.from('brand_kits').insert(payload).select().single();
@@ -434,7 +494,14 @@
         logo_url: $('#m-logo').value.trim(),
         color_primary: $('#m-color1').value,
         color_secondary: $('#m-color2').value,
-        shared: $('#m-shared').value === 'true'
+        shared: $('#m-shared').value === 'true',
+        options: {
+          color_text: $('#m-colorText').value,
+          color_tertiary: $('#m-color3').value,
+          font_family: $('#m-font').value || null,
+          logo_width: $('#m-logoW').value ? parseInt($('#m-logoW').value,10) : null,
+          logo_gap: $('#m-gap').value ? parseInt($('#m-gap').value,10) : null
+        }
       };
       const { data, error } = await sb.from('brand_kits').update(patch).eq('id', id).select().single();
       if (error) return alert('Errore aggiornamento: ' + error.message);
@@ -453,6 +520,8 @@
     
     function applyKitToForm(kit) {
       if (kit.logo_url) $('#f-logo').value = kit.logo_url;
+      const opts = kit.options || {};
+      if (opts.logo_width) $('#f-logo-w').value = String(opts.logo_width);
       updatePreview();
     }
     
@@ -481,25 +550,32 @@ function buildSignatureHTML() {
   const line = 1.15;          // line-height sobrio
 
   const kit = kits.find(k => k.id === selectedKitId) || {};
-  const colorName = kit.color_secondary || '#1F4A34'; // nome/ruolo
-  const colorAccent = kit.color_primary || '#B39B79'; // link
+  const opts = kit.options || {};
+  const colorName = kit.color_secondary || '#1F4A34';      // Nome
+  const colorRole = kit.color_primary || '#B39B79';         // Ruolo
+  const colorCompany = opts.color_tertiary || '#666666';    // Azienda
+  const colorAccent = kit.color_primary || '#B39B79';       // Link/accento
+  const bodyText = opts.color_text || '#333333';
+  const fontStack = opts.font_family || 'Arial, Helvetica, sans-serif';
+  const gap = Number.isFinite(opts.logo_gap) ? opts.logo_gap : 14;
+  const linkUnderline = 'none'; // sempre senza sottolineatura
 
   return `
 <table cellpadding="0" cellspacing="0" border="0"
-       style="font-family: Arial, Helvetica, sans-serif; color:#222; font-size:${base}px; line-height:${line};">
+       style="font-family: ${fontStack}; color:${bodyText}; font-size:${base}px; line-height:${line};">
   <tr>
-    <td style="padding-right:14px; vertical-align:middle;">
+    <td style="padding-right:${gap}px; vertical-align:middle;">
       <img src="${logo}" width="${logoW}" style="display:block; border:0; outline:none;" alt="logo" />
     </td>
     <td style="vertical-align:middle;">
       <div style="font-weight:bold; color:${colorName}; font-size:${nameSize}px; line-height:1.1;">${name}</div>
-      <div style="font-weight:bold; color:${colorName}; font-size:${roleSize}px; line-height:1.1;">${role}</div>
-      <div style="color:#333;">${company}</div>
-      ${address ? `<div style="color:#333;">${address}</div>` : ''}
-      <div style="margin-top:8px; color:#333;">
-        ${phone ? `Tel: <a href="tel:${phone.replace(/\s+/g,'')}" style="color:${colorAccent}; text-decoration:none;">${phone}</a><br/>` : ''}
-        ${website ? `Web: <a href="${website}" style="color:${colorAccent}; text-decoration:none;">${website.replace(/^https?:\/\//,'')}</a><br/>` : ''}
-        ${email ? `Email: <a href="mailto:${email}" style="color:${colorAccent}; text-decoration:none;">${email}</a>` : ''}
+      <div style="font-weight:bold; color:${colorRole}; font-size:${roleSize}px; line-height:1.1;">${role}</div>
+      <div style="color:${colorCompany};">${company}</div>
+      ${address ? `<div style="color:${bodyText};">${address}</div>` : ''}
+      <div style="margin-top:8px; color:${bodyText};">
+        ${phone ? `Tel: <a href="tel:${phone.replace(/\s+/g,'')}" style="color:${colorAccent}; text-decoration:${linkUnderline};">${phone}</a><br/>` : ''}
+        ${website ? `Web: <a href="${website}" style="color:${colorAccent}; text-decoration:${linkUnderline};">${website.replace(/^https?:\/\//,'')}</a><br/>` : ''}
+        ${email ? `Email: <a href="mailto:${email}" style="color:${colorAccent}; text-decoration:${linkUnderline};">${email}</a>` : ''}
       </div>
     </td>
   </tr>
