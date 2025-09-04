@@ -487,7 +487,6 @@
       kits.push(data); renderKitDropdown(); renderKitList();
       $('#m-msg').textContent = 'Salvato.';
     }
-    <script>
     async function updateKit(id) {
       if (!sb || !sessionUser) return openAuth();
 
@@ -549,7 +548,6 @@
 
       alert('Errore aggiornamento: ' + (lastErr?.message || 'sconosciuto'));
     }
-    </script>
     async function deleteKit(id) {
       if (!sb || !sessionUser) return openAuth();
       if (!confirm('Eliminare questo Brand Kit?')) return;
