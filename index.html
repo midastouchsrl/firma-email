@@ -487,8 +487,17 @@
       kits.push(data); renderKitDropdown(); renderKitList();
       $('#m-msg').textContent = 'Salvato.';
     }
+    <script>
     async function updateKit(id) {
       if (!sb || !sessionUser) return openAuth();
+
+      // 1) assicurati che la sessione sia viva (evita "Load failed" per sessioni scadute)
+      try {
+        await sb.auth.getSession();
+      } catch (_) {
+        // Non blocchiamo: tenteremo comunque l'update + retry
+      }
+
       const patch = {
         name: $('#m-name').value.trim(),
         logo_url: $('#m-logo').value.trim(),
@@ -503,12 +512,44 @@
           logo_gap: $('#m-gap').value ? parseInt($('#m-gap').value,10) : null
         }
       };
-      const { data, error } = await sb.from('brand_kits').update(patch).eq('id', id).select().single();
-      if (error) return alert('Errore aggiornamento: ' + error.message);
-      const idx = kits.findIndex(k => k.id === id); if (idx >= 0) kits[idx] = data;
-      renderKitDropdown(); renderKitList();
-      $('#m-msg').textContent = 'Aggiornato.';
+
+      // 2) piccolo retry su errori di trasporto (TypeError/Failed to fetch/Load failed)
+      let lastErr = null;
+      for (let attempt = 0; attempt < 2; attempt++) {
+        const { data, error } = await sb
+          .from('brand_kits')
+          .update(patch)
+          .eq('id', id)
+          .select()
+          .single();
+
+        if (!error) {
+          const idx = kits.findIndex(k => k.id === id);
+          if (idx >= 0) kits[idx] = data;
+          renderKitDropdown();
+          renderKitList();
+          $('#m-msg').textContent = 'Aggiornato.';
+          return;
+        }
+
+        lastErr = error;
+        const msg = String(error?.message || '').toLowerCase();
+        const isTransportErr =
+          msg.includes('failed to fetch') || msg.includes('load failed') || error?.name === 'TypeError';
+
+        if (isTransportErr && attempt === 0) {
+          // backoff breve e riprova una volta
+          await new Promise(r => setTimeout(r, 350));
+          // aggiorno di nuovo la sessione prima del secondo tentativo
+          try { await sb.auth.getSession(); } catch (_) {}
+          continue;
+        }
+        break;
+      }
+
+      alert('Errore aggiornamento: ' + (lastErr?.message || 'sconosciuto'));
     }
+    </script>
     async function deleteKit(id) {
       if (!sb || !sessionUser) return openAuth();
       if (!confirm('Eliminare questo Brand Kit?')) return;
