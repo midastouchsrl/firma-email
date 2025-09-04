@@ -137,20 +137,40 @@
             <div>
               <label>Nome</label>
               <input id="f-name" type="text" value="Mario Rossi">
+              <div class="muted" style="margin-top:4px;">
+                <label style="display:inline-flex;align-items:center;gap:6px;cursor:pointer;">
+                  <input id="b-name" type="checkbox" checked> Grassetto
+                </label>
+              </div>
             </div>
             <div>
               <label>Ruolo</label>
               <input id="f-role" type="text" value="Direttore Commerciale">
+              <div class="muted" style="margin-top:4px;">
+                <label style="display:inline-flex;align-items:center;gap:6px;cursor:pointer;">
+                  <input id="b-role" type="checkbox" checked> Grassetto
+                </label>
+              </div>
             </div>
           </div>
           <div class="row">
             <div>
               <label>Azienda</label>
               <input id="f-company" type="text" value="REFE Holding S.p.A.">
+              <div class="muted" style="margin-top:4px;">
+                <label style="display:inline-flex;align-items:center;gap:6px;cursor:pointer;">
+                  <input id="b-company" type="checkbox"> Grassetto
+                </label>
+              </div>
             </div>
             <div>
               <label>Indirizzo (opzionale)</label>
               <input id="f-address" type="text" placeholder="Via Esempio 123, Roma">
+              <div class="muted" style="margin-top:4px;">
+                <label style="display:inline-flex;align-items:center;gap:6px;cursor:pointer;">
+                  <input id="b-address" type="checkbox"> Grassetto
+                </label>
+              </div>
             </div>
           </div>
           <div class="row">
@@ -580,24 +600,30 @@ function buildSignatureHTML() {
   const logo = $('#f-logo').value.trim() || 'https://midastouchsrl.github.io/firma-email/assets/LOGOREFE.png';
   const logoW = parseInt($('#f-logo-w').value || '85', 10);
 
+  // --- toggles grassetto ---
+  const bName = !!$('#b-name')?.checked;
+  const bRole = !!$('#b-role')?.checked;
+  const bCompany = !!$('#b-company')?.checked;
+  const bAddress = !!$('#b-address')?.checked;
+  const fw = (on) => on ? 'bold' : 'normal';
+
   // === SCALA TESTO IN BASE AL LOGO (limiti eleganti) ===
-  // 84px -> ~13px base. Clamp per non risultare pacchiano.
   const clamp = (v, min, max) => Math.max(min, Math.min(max, v));
   const base = clamp(Math.round(logoW * 0.155), 12, 16); // corpo testo
-  const nameSize = base + 1;  // Nome leggermente più grande
-  const roleSize = base;      // Ruolo uguale al corpo
-  const line = 1.15;          // line-height sobrio
+  const nameSize = base + 1;
+  const roleSize = base;
+  const line = 1.15;
 
   const kit = kits.find(k => k.id === selectedKitId) || {};
   const opts = kit.options || {};
-  const colorName = kit.color_secondary || '#1F4A34';      // Nome
-  const colorRole = kit.color_primary || '#B39B79';         // Ruolo
-  const colorCompany = opts.color_tertiary || '#666666';    // Azienda
-  const colorAccent = kit.color_primary || '#B39B79';       // Link/accento
+  const colorName = kit.color_secondary || '#1F4A34';
+  const colorRole = kit.color_primary || '#B39B79';
+  const colorCompany = opts.color_tertiary || '#666666';
+  const colorAccent = kit.color_primary || '#B39B79';
   const bodyText = opts.color_text || '#333333';
   const fontStack = opts.font_family || 'Arial, Helvetica, sans-serif';
   const gap = Number.isFinite(opts.logo_gap) ? opts.logo_gap : 14;
-  const linkUnderline = 'none'; // sempre senza sottolineatura
+  const linkUnderline = 'none';
 
   return `
 <table cellpadding="0" cellspacing="0" border="0"
@@ -607,10 +633,10 @@ function buildSignatureHTML() {
       <img src="${logo}" width="${logoW}" style="display:block; border:0; outline:none;" alt="logo" />
     </td>
     <td style="vertical-align:middle;">
-      <div style="font-weight:bold; color:${colorName}; font-size:${nameSize}px; line-height:1.1;">${name}</div>
-      <div style="font-weight:bold; color:${colorRole}; font-size:${roleSize}px; line-height:1.1;">${role}</div>
-      <div style="color:${colorCompany};">${company}</div>
-      ${address ? `<div style="color:${bodyText};">${address}</div>` : ''}
+      <div style="font-weight:${fw(bName)}; color:${colorName}; font-size:${nameSize}px; line-height:1.1;">${name}</div>
+      <div style="font-weight:${fw(bRole)}; color:${colorRole}; font-size:${roleSize}px; line-height:1.1;">${role}</div>
+      <div style="font-weight:${fw(bCompany)}; color:${colorCompany};">${company}</div>
+      ${address ? `<div style="font-weight:${fw(bAddress)}; color:${bodyText};">${address}</div>` : ''}
       <div style="margin-top:8px; color:${bodyText};">
         ${phone ? `Tel: <a href="tel:${phone.replace(/\s+/g,'')}" style="color:${colorAccent}; text-decoration:${linkUnderline};">${phone}</a><br/>` : ''}
         ${website ? `Web: <a href="${website}" style="color:${colorAccent}; text-decoration:${linkUnderline};">${website.replace(/^https?:\/\//,'')}</a><br/>` : ''}
