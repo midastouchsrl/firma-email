@@ -1,0 +1,542 @@
+<!DOCTYPE html>
+<html lang="it" data-theme="dark">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Midas Touch — Generatore Firme Email</title>
+  <style>
+    :root{
+      --bg:#0d1016; --panel:#141927; --panel2:#0f1320; --stroke:#253047;
+      --fg:#E9ECF1; --muted:#98A1B3; --accent:#B39B79; --brand:#1F4A34;
+      --ok:#245e45; --danger:#7c2d2d; --radius:16px; --shadow:0 10px 26px rgba(0,0,0,.28);
+      --control:#0f1422;
+    }
+    html[data-theme="light"]{
+      --bg:#f6f7fb; --panel:#ffffff; --panel2:#f3f6fb; --stroke:#e3e7f0;
+      --fg:#1b1e27; --muted:#667085; --accent:#6b5e46; --brand:#1F4A34;
+      --ok:#1d6a49; --danger:#a53a3a; --shadow:0 10px 26px rgba(0,0,0,.06);
+      --control:#ffffff;
+    }
+    *{ box-sizing:border-box; }
+    body{ margin:0; padding:20px; background:var(--bg); color:var(--fg);
+      font:14px/1.4 ui-sans-serif, system-ui,-apple-system, Segoe UI, Roboto, Arial; }
+    .container{ max-width:1200px; margin:0 auto; }
+    .bar{ display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:14px; }
+    .brand{ display:flex; align-items:center; gap:10px; }
+    .brand img{ height:35px; width:auto; display:block; }
+    .brand h1{ margin:0; font-size:16px; font-weight:800; letter-spacing:.2px; }
+    .nav{ display:flex; gap:8px; }
+    .tab{ padding:8px 12px; border:1px solid var(--stroke); border-radius:999px; background:var(--panel2); color:var(--fg); text-decoration:none; }
+    .tab.active{ outline:2px solid var(--accent); }
+    .btn{ padding:10px 14px; border-radius:12px; border:1px solid var(--stroke); background:var(--panel2); color:var(--fg); cursor:pointer; }
+    .btn.primary{ background:var(--ok); border-color:#1d4c38; }
+    .btn.danger{ background:var(--danger); border-color:#5a2222; }
+    .grid{ display:grid; grid-template-columns: 460px 1fr; gap:16px; }
+    .card{ background:var(--panel); border:1px solid var(--stroke); border-radius:var(--radius); padding:16px; box-shadow:var(--shadow); }
+    .section{ margin-bottom:14px; }
+    .title{ margin:0 0 8px; font-size:13px; color:var(--muted); text-transform:uppercase; letter-spacing:.12em; }
+    .row{ display:grid; grid-template-columns: 1fr 1fr; gap:10px; }
+    .row3{ display:grid; grid-template-columns: repeat(3, 1fr); gap:10px; }
+    label{ display:block; font-size:12px; color:var(--muted); margin-bottom:6px; }
+    select, input{ width:100%; padding:11px 12px; border-radius:12px; border:1px solid var(--stroke);
+      background:var(--control); color:var(--fg); outline:none; box-shadow:none; }
+
+    select{
+      -webkit-appearance:none;
+      -moz-appearance:none;
+      appearance:none;
+      padding-right:36px; /* spazio per la freccia */
+      background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2398A1B3' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'/></svg>");
+      background-repeat:no-repeat;
+      background-position:right 12px center;
+      background-size:12px 12px;
+      box-shadow:none; /* rimuove eventuali glossy inset su Safari */
+    }
+
+    /* stato hover/focus più pulito */
+    select:hover{ border-color:#3a4661; }
+    select:focus{ outline:2px solid #3a4661; }
+    select:focus, input:focus{ outline:2px solid #3a4661; }
+    input[type="color"]{ padding:0; height:40px; background:var(--control); }
+    .actions{ display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+    .hr{ height:1px; background:var(--stroke); margin:12px 0; }
+    .previewWrap{ background:#fff; border:1px dashed var(--stroke); border-radius:12px; padding:10px; min-height:300px; }
+    iframe#preview{ width:100%; height:300px; border:0; background:#fff; border-radius:8px; }
+    .muted{ color:var(--muted); font-size:12px; }
+    .hidden{ display:none !important; }
+    .list{ display:flex; flex-direction:column; gap:8px; max-height:420px; overflow:auto; }
+    .item{ padding:10px; background:var(--panel2); border:1px solid var(--stroke); border-radius:12px; display:flex; align-items:center; justify-content:space-between; gap:8px; }
+    .item b{ font-size:14px; }
+    .pill{ font-size:11px; padding:3px 8px; border-radius:999px; border:1px solid var(--stroke); background:var(--panel2); color:var(--muted); }
+    .overlay{ position:fixed; inset:0; display:none; place-items:center; background:rgba(0,0,0,.45); }
+    .overlay.show{ display:grid; }
+    .modal{ width:min(520px, 92vw); background:var(--panel); border:1px solid var(--stroke); border-radius:16px; box-shadow:var(--shadow); padding:16px; }
+    .modal h3{ margin:0 0 8px; }
+    .right{ text-align:right; }
+    @media (max-width: 980px){
+      .grid{ grid-template-columns: 1fr; }
+      iframe#preview{ height:360px; }
+    }
+  </style>
+  <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+</head>
+<body>
+  <div class="container">
+    <header class="bar">
+      <div class="brand">
+        <img src="https://midastouchsrl.github.io/firma-email/assets/LOGOMT.png" alt="Midas Touch" onerror="this.style.display='none'">
+        <h1>Midas Touch — Generatore Firme Email</h1>
+      </div>
+      <nav class="nav">
+        <a id="tab-gen" class="tab" href="#/generator">Generatore</a>
+        <a id="tab-kits" class="tab" href="#/kits">Gestione Brand Kit</a>
+        <button id="themeBtn" class="tab" type="button">Tema</button>
+      </nav>
+    </header>
+
+    <!-- GENERATOR PAGE -->
+    <main id="page-generator" class="grid">
+      <section class="card">
+        <div class="section">
+          <h2 class="title">Brand Kit</h2>
+          <div class="row">
+            <div>
+              <label>Seleziona</label>
+              <select id="sel-kit">
+                <option value="">— seleziona —</option>
+              </select>
+            </div>
+            <div>
+              <label>&nbsp;</label>
+              <div class="actions">
+                <button class="btn" id="btn-manage" type="button" onclick="location.hash='#/kits'">Gestisci…</button>
+                <button class="btn" id="btn-refresh-kits" type="button">Ricarica</button>
+              </div>
+            </div>
+          </div>
+          <div class="muted" style="margin-top:6px;">I kit <b>condivisi</b> sono visibili senza login. Per creare o modificare, vai in “Gestione Brand Kit”.</div>
+        </div>
+
+        <div class="hr"></div>
+
+        <div class="section">
+          <h2 class="title">Dati firma</h2>
+          <div class="row">
+            <div>
+              <label>Nome</label>
+              <input id="f-name" type="text" value="Mario Rossi">
+            </div>
+            <div>
+              <label>Ruolo</label>
+              <input id="f-role" type="text" value="Direttore Commerciale">
+            </div>
+          </div>
+          <div class="row">
+            <div>
+              <label>Azienda</label>
+              <input id="f-company" type="text" value="REFE Holding S.p.A.">
+            </div>
+            <div>
+              <label>Indirizzo (opzionale)</label>
+              <input id="f-address" type="text" placeholder="Via Esempio 123, Roma">
+            </div>
+          </div>
+          <div class="row">
+            <div>
+              <label>Sito web</label>
+              <input id="f-website" type="text" value="www.refeholdingspa.it">
+            </div>
+            <div>
+              <label>Email</label>
+              <input id="f-email" type="email" value="nome@refeholdingspa.it">
+            </div>
+          </div>
+          <div class="row">
+            <div>
+              <label>Telefono</label>
+              <input id="f-phone" type="text" value="+39 06 6926 4702">
+            </div>
+            <div>
+              <label>URL Logo (obbligatorio)</label>
+              <input id="f-logo" type="url" value="https://midastouchsrl.github.io/firma-email/assets/LOGOREFE.png">
+            </div>
+          </div>
+          <div class="row">
+            <div>
+              <label>Larghezza logo (px)</label>
+              <input id="f-logo-w" type="number" min="32" max="220" value="85">
+            </div>
+            <div class="right">
+              <div class="actions" style="margin-top:20px; justify-content:space-between; width:100%;">
+                <button class="btn primary" id="btn-preview" type="button">Aggiorna anteprima</button>
+                <div class="actions">
+                  <button class="btn" id="btn-copy" type="button">Copia HTML</button>
+                  <button class="btn" id="btn-export" type="button">Esporta .html</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2 class="title">Anteprima</h2>
+        <div class="previewWrap">
+          <iframe id="preview"></iframe>
+        </div>
+      </section>
+    </main>
+
+    <!-- KITS MANAGER PAGE -->
+    <main id="page-kits" class="hidden">
+      <section class="card" style="max-width:1050px; margin:0 auto;">
+        <div class="actions" style="justify-content:space-between;">
+          <h2 class="title" style="margin:0;">Gestione Brand Kit</h2>
+          <div class="actions">
+            <button class="btn" type="button" onclick="location.hash='#/generator'">⬅︎ Torna al Generatore</button>
+            <span id="session-pill" class="pill">Non autenticato</span>
+          </div>
+        </div>
+        <div class="hr"></div>
+
+        <div class="row">
+          <div>
+            <label>Elenco (propri + condivisi)</label>
+            <div id="kit-list" class="list"></div>
+          </div>
+          <div>
+            <label>Editor</label>
+            <input id="m-name" type="text" placeholder="Nome Brand Kit">
+            <label style="margin-top:6px;">Logo URL</label>
+            <input id="m-logo" type="url" placeholder="https://...logo.png">
+            <div class="row3" style="margin-top:6px;">
+              <div>
+                <label>Colore Primario</label>
+                <input id="m-color1" type="color" value="#1F4A34">
+              </div>
+              <div>
+                <label>Colore Secondario</label>
+                <input id="m-color2" type="color" value="#B39B79">
+              </div>
+              <div>
+                <label>Condiviso</label>
+                <select id="m-shared">
+                  <option value="false">No</option>
+                  <option value="true">Sì</option>
+                </select>
+              </div>
+            </div>
+            <div class="actions" style="margin-top:10px;">
+              <button id="m-new" class="btn" type="button">+ Nuovo</button>
+              <button id="m-save" class="btn primary" type="button">Salva</button>
+              <button id="m-update" class="btn" type="button">Aggiorna</button>
+              <button id="m-delete" class="btn danger" type="button">Elimina</button>
+            </div>
+            <div id="m-msg" class="muted" style="margin-top:6px;"></div>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- LOGIN MODAL (only when needed) -->
+  <div id="auth-overlay" class="overlay" aria-hidden="true">
+    <div class="modal">
+      <h3>Accedi per gestire i Brand Kit</h3>
+      <p class="muted">Inserisci la tua email per ricevere un Magic Link. Dopo il login tornerai qui.</p>
+      <div class="row" style="align-items:end;">
+        <input id="auth-email" type="email" placeholder="nome@azienda.it">
+        <button id="auth-send" class="btn primary" type="button">Invia Magic Link</button>
+      </div>
+      <div class="actions" style="margin-top:8px; justify-content:flex-end;">
+        <button id="auth-cancel" class="btn" type="button">Annulla</button>
+      </div>
+    </div>
+  </div>
+  <script>
+    const $ = s => document.querySelector(s);
+    const $$ = s => Array.from(document.querySelectorAll(s));
+    
+    function setTheme() {
+      const btn = $('#themeBtn');
+      btn.addEventListener('click', () => {
+        const cur = document.documentElement.getAttribute('data-theme') || 'dark';
+        const next = cur === 'dark' ? 'light' : 'dark';
+        document.documentElement.setAttribute('data-theme', next);
+        localStorage.setItem('theme', next);
+      });
+      const saved = localStorage.getItem('theme'); if (saved) document.documentElement.setAttribute('data-theme', saved);
+    }
+    
+    function route() {
+      const hash = location.hash || '#/generator';
+      const isGen = hash.startsWith('#/generator');
+      $('#page-generator').classList.toggle('hidden', !isGen);
+      $('#page-kits').classList.toggle('hidden', isGen);
+      $('#tab-gen').classList.toggle('active', isGen);
+      $('#tab-kits').classList.toggle('active', !isGen);
+      if (!isGen) ensureAuthForManager();
+    }
+    window.addEventListener('hashchange', route);
+    
+    const SUPABASE_URL = "https://ghzxahkqxqlyvldfocdu.supabase.co";
+    const SUPABASE_ANON_KEY = "PASTE_YOUR_ANON_KEY_HERE"; // <- inserisci la tua anon key
+    
+    let sb = null;
+    let sessionUser = null;
+    
+    async function initSupabase() {
+      try {
+        if (!window.supabase) throw new Error('SDK non caricato');
+        sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        const { data: { user } } = await sb.auth.getUser();
+        sessionUser = user || null;
+        updateSessionUi();
+      } catch (e) {
+        console.warn('Supabase init note:', e.message);
+      } finally {
+        await loadKitsSafe();
+        preloadPreview();
+      }
+    }
+    
+    function updateSessionUi() {
+      const pill = $('#session-pill'); if (!pill) return;
+      pill.textContent = sessionUser ? 'Autenticato' : 'Non autenticato';
+      pill.style.background = sessionUser ? 'rgba(34,197,94,.15)' : '';
+    }
+    
+    const overlay = $('#auth-overlay');
+    function openAuth() { overlay.classList.add('show'); overlay.setAttribute('aria-hidden','false'); }
+    function closeAuth() { overlay.classList.remove('show'); overlay.setAttribute('aria-hidden','true'); }
+    function ensureAuthForManager() { if (!sessionUser) openAuth(); }
+    
+    $('#auth-send').addEventListener('click', async () => {
+      try {
+        if (!sb) throw new Error('Supabase non inizializzato');
+        const email = $('#auth-email').value.trim();
+        if (!email) { alert('Inserisci un’email'); return; }
+        const { error } = await sb.auth.signInWithOtp({ email });
+        if (error) alert('Errore: ' + error.message);
+        else alert('Email inviata. Controlla la posta e riapri la pagina.');
+      } catch (e) { alert('Login non disponibile: ' + e.message); }
+    });
+    $('#auth-cancel').addEventListener('click', () => { location.hash = '#/generator'; closeAuth(); });
+    
+    let kits = [];
+    let selectedKitId = null;
+    
+    async function loadKitsSafe() {
+      try {
+        if (!sb) throw new Error('offline/nessuna chiave: mostro solo lista vuota');
+        const { data, error } = await sb.from('brand_kits').select('id,name,logo_url,color_primary,color_secondary,shared,owner_user_id').order('name', { ascending:true });
+        if (error) throw error;
+        kits = (data || []).filter(k => k.shared || (sessionUser && k.owner_user_id === sessionUser.id));
+      } catch (e) {
+        kits = [];
+      } finally {
+        renderKitDropdown(); renderKitList();
+      }
+    }
+    
+    function renderKitDropdown() {
+      const sel = $('#sel-kit');
+      sel.innerHTML = '<option value="">— seleziona —</option>';
+      for (const k of kits) {
+        const o = document.createElement('option');
+        o.value = k.id; o.textContent = k.name + (k.shared ? ' 🌐' : '');
+        sel.appendChild(o);
+      }
+      sel.onchange = () => {
+        selectedKitId = sel.value || null;
+        const kit = kits.find(k => k.id === selectedKitId);
+        if (kit) applyKitToForm(kit);
+      };
+    }
+    
+    function renderKitList() {
+      const list = $('#kit-list'); if (!list) return;
+      list.innerHTML = '';
+      kits.forEach(k => {
+        const row = document.createElement('div');
+        row.className = 'item';
+        row.innerHTML = `
+        <div><b>${k.name}</b><div class="muted">${k.shared ? 'Condiviso' : 'Privato'}</div></div>
+        <div class="actions">
+          <button class="btn" data-id="${k.id}" data-act="edit" type="button">Modifica</button>
+          <button class="btn" data-id="${k.id}" data-act="use" type="button">Usa</button>
+        </div>`;
+        list.appendChild(row);
+      });
+      list.onclick = (e) => {
+        const b = e.target.closest('button'); if (!b) return;
+        const id = b.getAttribute('data-id'); const act = b.getAttribute('data-act');
+        const kit = kits.find(x => x.id === id); if (!kit) return;
+        if (act === 'use') { selectedKitId = id; applyKitToForm(kit); location.hash = '#/generator'; }
+        if (act === 'edit') { if (!sessionUser) return openAuth(); fillManager(kit); }
+      };
+    }
+    
+    function fillManager(kit) {
+      $('#m-name').value = kit.name || '';
+      $('#m-logo').value = kit.logo_url || '';
+      $('#m-color1').value = kit.color_primary || '#1F4A34';
+      $('#m-color2').value = kit.color_secondary || '#B39B79';
+      $('#m-shared').value = kit.shared ? 'true' : 'false';
+      $('#m-msg').textContent = 'Modifica: ' + (kit.name || '');
+    
+      $('#m-save').onclick = async () => await saveNewFromManager();
+      $('#m-update').onclick = async () => await updateKit(kit.id);
+      $('#m-delete').onclick = async () => await deleteKit(kit.id);
+    }
+    
+    async function saveNewFromManager() {
+      if (!sb || !sessionUser) return openAuth();
+      const payload = {
+        name: $('#m-name').value.trim(),
+        logo_url: $('#m-logo').value.trim(),
+        color_primary: $('#m-color1').value,
+        color_secondary: $('#m-color2').value,
+        shared: $('#m-shared').value === 'true',
+        owner_user_id: sessionUser.id
+      };
+      if (!payload.name) return alert('Nome obbligatorio');
+      const { data, error } = await sb.from('brand_kits').insert(payload).select().single();
+      if (error) return alert('Errore salvataggio: ' + error.message);
+      kits.push(data); renderKitDropdown(); renderKitList();
+      $('#m-msg').textContent = 'Salvato.';
+    }
+    async function updateKit(id) {
+      if (!sb || !sessionUser) return openAuth();
+      const patch = {
+        name: $('#m-name').value.trim(),
+        logo_url: $('#m-logo').value.trim(),
+        color_primary: $('#m-color1').value,
+        color_secondary: $('#m-color2').value,
+        shared: $('#m-shared').value === 'true'
+      };
+      const { data, error } = await sb.from('brand_kits').update(patch).eq('id', id).select().single();
+      if (error) return alert('Errore aggiornamento: ' + error.message);
+      const idx = kits.findIndex(k => k.id === id); if (idx >= 0) kits[idx] = data;
+      renderKitDropdown(); renderKitList();
+      $('#m-msg').textContent = 'Aggiornato.';
+    }
+    async function deleteKit(id) {
+      if (!sb || !sessionUser) return openAuth();
+      if (!confirm('Eliminare questo Brand Kit?')) return;
+      const { error } = await sb.from('brand_kits').delete().eq('id', id);
+      if (error) return alert('Errore eliminazione: ' + error.message);
+      kits = kits.filter(k => k.id !== id); renderKitDropdown(); renderKitList();
+      $('#m-msg').textContent = 'Eliminato.';
+    }
+    
+    function applyKitToForm(kit) {
+      if (kit.logo_url) $('#f-logo').value = kit.logo_url;
+      updatePreview();
+    }
+    
+    function normWeb(u) {
+      let url = (u||'').trim(); if (!url) return '';
+      if (!/^https?:\/\//i.test(url)) url = 'https://' + url.replace(/^\/+/, '');
+      return url;
+    }
+function buildSignatureHTML() {
+  const name = $('#f-name').value.trim() || 'Mario Rossi';
+  const role = $('#f-role').value.trim() || 'Direttore Commerciale';
+  const company = $('#f-company').value.trim() || 'REFE Holding S.p.A.';
+  const address = $('#f-address').value.trim();
+  const website = normWeb($('#f-website').value.trim() || 'www.refeholdingspa.it');
+  const email = $('#f-email').value.trim() || 'nome@refeholdingspa.it';
+  const phone = $('#f-phone').value.trim() || '+39 06 6926 4702';
+  const logo = $('#f-logo').value.trim() || 'https://midastouchsrl.github.io/firma-email/assets/LOGOREFE.png';
+  const logoW = parseInt($('#f-logo-w').value || '85', 10);
+
+  // === SCALA TESTO IN BASE AL LOGO (limiti eleganti) ===
+  // 84px -> ~13px base. Clamp per non risultare pacchiano.
+  const clamp = (v, min, max) => Math.max(min, Math.min(max, v));
+  const base = clamp(Math.round(logoW * 0.155), 12, 16); // corpo testo
+  const nameSize = base + 1;  // Nome leggermente più grande
+  const roleSize = base;      // Ruolo uguale al corpo
+  const line = 1.15;          // line-height sobrio
+
+  const kit = kits.find(k => k.id === selectedKitId) || {};
+  const colorName = kit.color_secondary || '#1F4A34'; // nome/ruolo
+  const colorAccent = kit.color_primary || '#B39B79'; // link
+
+  return `
+<table cellpadding="0" cellspacing="0" border="0"
+       style="font-family: Arial, Helvetica, sans-serif; color:#222; font-size:${base}px; line-height:${line};">
+  <tr>
+    <td style="padding-right:14px; vertical-align:middle;">
+      <img src="${logo}" width="${logoW}" style="display:block; border:0; outline:none;" alt="logo" />
+    </td>
+    <td style="vertical-align:middle;">
+      <div style="font-weight:bold; color:${colorName}; font-size:${nameSize}px; line-height:1.1;">${name}</div>
+      <div style="font-weight:bold; color:${colorName}; font-size:${roleSize}px; line-height:1.1;">${role}</div>
+      <div style="color:#333;">${company}</div>
+      ${address ? `<div style="color:#333;">${address}</div>` : ''}
+      <div style="margin-top:8px; color:#333;">
+        ${phone ? `Tel: <a href="tel:${phone.replace(/\s+/g,'')}" style="color:${colorAccent}; text-decoration:none;">${phone}</a><br/>` : ''}
+        ${website ? `Web: <a href="${website}" style="color:${colorAccent}; text-decoration:none;">${website.replace(/^https?:\/\//,'')}</a><br/>` : ''}
+        ${email ? `Email: <a href="mailto:${email}" style="color:${colorAccent}; text-decoration:none;">${email}</a>` : ''}
+      </div>
+    </td>
+  </tr>
+</table>`.trim();
+}
+    
+    function preloadPreview(){ updatePreview(); }
+    function updatePreview() {
+      const html = buildSignatureHTML();
+      const iframe = document.getElementById('preview');
+      if (!iframe) return;
+      // Prefer srcdoc for reliability (avoids doc.write timing issues)
+      try {
+        if ('srcdoc' in iframe) {
+          iframe.srcdoc = '<!doctype html><html><head><meta charset="utf-8"></head><body>' + html + '</body></html>';
+          return;
+        }
+      } catch (_) {}
+      // Fallback
+      const doc = iframe.contentDocument || iframe.contentWindow?.document;
+      if (!doc) return;
+      doc.open();
+      doc.write('<!doctype html><html><head><meta charset="utf-8"></head><body>' + html + '</body></html>');
+      doc.close();
+    }
+    async function copyHTML() {
+      await navigator.clipboard.writeText(buildSignatureHTML());
+      alert('HTML copiato.');
+    }
+    function exportHTML() {
+      const blob = new Blob([buildSignatureHTML()], { type:'text/html' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a'); a.href=url; a.download='firma_email.html'; a.click();
+      URL.revokeObjectURL(url);
+    }
+    
+    function bindGenerator() {
+      $('#btn-refresh-kits').addEventListener('click', loadKitsSafe);
+      $('#btn-preview').addEventListener('click', updatePreview);
+      $('#btn-copy').addEventListener('click', copyHTML);
+      $('#btn-export').addEventListener('click', exportHTML);
+    }
+    // Aggiorna anteprima al volo quando cambiano i campi
+    $$('#page-generator input, #page-generator select').forEach(el => {
+      el.addEventListener('input', () => {
+        // Debounce leggero per digitazioni veloci
+        clearTimeout(window.__pv_t);
+        window.__pv_t = setTimeout(updatePreview, 80);
+      });
+    });
+    
+    window.addEventListener('DOMContentLoaded', async () => {
+      setTheme();
+      route();
+      bindGenerator();
+      updatePreview(); // render subito l'anteprima, anche se Supabase non è pronto
+      await initSupabase();
+    });
+    </script>
+    </body>
+    </html>
