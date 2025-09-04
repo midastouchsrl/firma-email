@@ -243,10 +243,11 @@
   <div id="auth-overlay" class="overlay" aria-hidden="true">
     <div class="modal">
       <h3>Accedi per gestire i Brand Kit</h3>
-      <p class="muted">Inserisci la tua email per ricevere un Magic Link. Dopo il login tornerai qui.</p>
+      <p class="muted">Accedi con email e password per gestire i Brand Kit.</p>
       <div class="row" style="align-items:end;">
         <input id="auth-email" type="email" placeholder="nome@azienda.it">
-        <button id="auth-send" class="btn primary" type="button">Invia Magic Link</button>
+        <input id="auth-password" type="password" placeholder="Password">
+        <button id="auth-send" class="btn primary" type="button">Accedi</button>
       </div>
       <div class="actions" style="margin-top:8px; justify-content:flex-end;">
         <button id="auth-cancel" class="btn" type="button">Annulla</button>
@@ -312,17 +313,37 @@
     function ensureAuthForManager() { if (!sessionUser) openAuth(); }
     
     $('#auth-send').addEventListener('click', async () => {
-      try {
-        if (!sb) throw new Error('Supabase non inizializzato');
-        const email = $('#auth-email').value.trim();
-        if (!email) { alert('Inserisci un’email'); return; }
-        const { error } = await sb.auth.signInWithOtp({ email });
-        if (error) alert('Errore: ' + error.message);
-        else alert('Email inviata. Controlla la posta e riapri la pagina.');
-      } catch (e) { alert('Login non disponibile: ' + e.message); }
-    });
+  try {
+    if (!sb) throw new Error('Supabase non inizializzato');
+    const email = $('#auth-email').value.trim();
+    const password = $('#auth-password').value;
+    if (!email || !password) { alert('Inserisci email e password'); return; }
+
+    const { error } = await sb.auth.signInWithPassword({ email, password });
+    if (error) { alert('Login fallito: ' + error.message); return; }
+
+    const { data: { user } } = await sb.auth.getUser();
+    sessionUser = user || null;
+    updateSessionUi();
+    closeAuth();
+    await loadKitsSafe();
+    location.hash = '#/kits';
+  } catch (e) { alert('Login non disponibile: ' + e.message); }
+});
     $('#auth-cancel').addEventListener('click', () => { location.hash = '#/generator'; closeAuth(); });
-    
+    document.addEventListener('click', async (e) => {
+  if (e.target && e.target.id === 'logoutBtn') {
+    try {
+      await sb.auth.signOut();
+      sessionUser = null;
+      updateSessionUi();
+      await loadKitsSafe();
+      location.hash = '#/generator';
+    } catch (err) {
+      alert('Errore logout: ' + err.message);
+    }
+  }
+});
     let kits = [];
     let selectedKitId = null;
     
@@ -540,3 +561,4 @@ function buildSignatureHTML() {
     </script>
     </body>
     </html>
+
